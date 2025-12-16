@@ -12,28 +12,19 @@
     "prepublishOnly": "npm run build",
     "type-check": "tsc --noEmit"
   },
-  "keywords": [
-    "systemd",
-    "journald",
-    "logging",
-    "typescript",
-    "socket",
-    "unix",
-    "linux"
-  ],
-  "author": "Yavuz Selim Komur",
+  "author": "Yavuz Selim KOMUR <yskomur@gmail.com>",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yskomur/ts-journald.git"
+    "url": "https://github.com/yskomur/ts-journal.git"
   },
   "bugs": {
-    "url": "https://github.com/yskomur/ts-journald/issues"
+    "url": "https://github.com/yskomur/ts-journal/issues"
   },
-  "homepage": "https://github.com/yskomur/ts-journald#readme",
+  "homepage": "https://github.com/yskomur/ts-journal#readme",
   "devDependencies": {
     "@rollup/plugin-typescript": "^11.1.0",
-    "@types/node": "^20.0.0",
+    "@types/node": "^20.19.27",
     "rollup": "^3.23.0",
     "tslib": "^2.5.0",
     "typescript": "^5.0.0"
@@ -47,6 +38,17 @@
     "node": ">=14.0.0"
   },
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "systemd",
+    "journald",
+    "logging",
+    "typescript",
+    "unix-socket"
+  ],
+  "dependencies": {
+    "unix-dgram": "^2.0.7"
   }
 }
