@@ -1,0 +1,52 @@
+{
+  "name": "ts-journald",
+  "version": "1.0.0",
+  "description": "Pure TypeScript systemd-journald client using native Unix sockets",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && rollup -c",
+    "build:watch": "rollup -c -w",
+    "prepublishOnly": "npm run build",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": [
+    "systemd",
+    "journald",
+    "logging",
+    "typescript",
+    "socket",
+    "unix",
+    "linux"
+  ],
+  "author": "Yavuz Selim Komur",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yskomur/ts-journald.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yskomur/ts-journald/issues"
+  },
+  "homepage": "https://github.com/yskomur/ts-journald#readme",
+  "devDependencies": {
+    "@rollup/plugin-typescript": "^11.1.0",
+    "@types/node": "^20.0.0",
+    "rollup": "^3.23.0",
+    "tslib": "^2.5.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "dist",
+    "README.MD",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
