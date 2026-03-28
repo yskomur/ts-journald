@@ -1,13 +1,23 @@
 import { SystemdJournal } from './journal';
 import { Priority } from './types';
-import type { JournalOptions, JournalEntry } from './types';
+import type {
+  JournalOptions,
+  JournalEntry,
+  JournalBackend,
+  ManagedBackendOptions,
+} from './types';
 
 // Default singleton instance
 let defaultInstance: SystemdJournal | null = null;
 
 export { SystemdJournal as Journal };
 export { Priority };
-export type { JournalOptions, JournalEntry };
+export type {
+  JournalOptions,
+  JournalEntry,
+  JournalBackend,
+  ManagedBackendOptions,
+};
 
 export function createJournal(options?: JournalOptions): SystemdJournal {
   defaultInstance = new SystemdJournal(options);

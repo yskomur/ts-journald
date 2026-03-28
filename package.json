@@ -1,6 +1,6 @@
 {
   "name": "@yskomur/ts-journald",
-  "version": "1.0.2",
+  "version": "2.0.1",
   "description": "Pure TypeScript systemd-journald client using native Unix sockets",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
@@ -23,19 +23,20 @@
   },
   "homepage": "https://github.com/yskomur/ts-journald#readme",
   "devDependencies": {
-    "@rollup/plugin-typescript": "^11.1.0",
-    "@types/node": "^20.19.27",
-    "rollup": "^3.23.0",
-    "tslib": "^2.5.0",
-    "typescript": "^5.0.0"
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@types/node": "^25.5.0",
+    "@typescript/native-preview": "latest",
+    "rollup": "^4.60.0",
+    "tslib": "^2.8.1"
   },
   "files": [
     "dist",
     "README.MD",
+    "README-TR.MD",
     "LICENSE"
   ],
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=22.0.0"
   },
   "publishConfig": {
     "access": "public",

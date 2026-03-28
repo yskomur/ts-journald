@@ -1,22 +1,31 @@
+import { existsSync } from 'node:fs';
+import { hostname } from 'node:os';
 import { JournalSocket } from './socket-client';
 import { StackTrace } from './stack-trace';
 import {
-  JournalEntry,
   Priority,
-  JournalOptions,
-  CallerInfo
 } from './types';
-import { MESSAGE_MAX_SIZE } from './constants';
+import type {
+  CallerInfo,
+  JournalBackend,
+  JournalEntry,
+  JournalOptions,
+  ManagedBackendOptions,
+} from './types';
+import { JOURNAL_SOCKET_PATH, MESSAGE_MAX_SIZE } from './constants';
 
 export class SystemdJournal {
-  private readonly socket: JournalSocket;
+  private readonly socket: JournalSocket | null;
+  private readonly backend: Exclude<JournalBackend, 'auto'>;
   private readonly identifier: string;
   private readonly syslogIdentifier: string;
   private readonly captureStackTrace: boolean;
   private readonly fallbackToConsole: boolean;
+  private readonly managed: ManagedBackendOptions;
   private readonly pid: number;
   private readonly uid: number;
   private readonly hostname: string;
+  private readonly cloudProvider: string;
   private readonly fieldsCache: Map<string, string>;
 
   constructor(options: JournalOptions = {}) {
@@ -24,16 +33,54 @@ export class SystemdJournal {
     this.syslogIdentifier = options.syslogIdentifier || this.identifier;
     this.captureStackTrace = options.captureStackTrace ?? true;
     this.fallbackToConsole = options.fallbackToConsole ?? true;
+    this.managed = options.managed ?? {};
+    this.backend = this.resolveBackend(options);
+    this.cloudProvider = this.detectCloudProvider();
 
-    this.socket = new JournalSocket(options.socketPath);
+    this.socket = this.backend === 'journald'
+      ? new JournalSocket(options.socketPath)
+      : null;
     this.pid = process.pid;
     this.uid = process.getuid ? process.getuid() : 0;
-    this.hostname = require('os').hostname();
+    this.hostname = hostname();
 
     this.fieldsCache = new Map();
     this.setupStaticFields();
 
-    this.setupErrorHandling();
+    if (this.socket) {
+      this.setupErrorHandling();
+    }
+  }
+
+  private resolveBackend(options: JournalOptions): Exclude<JournalBackend, 'auto'> {
+    const requested = options.backend ?? 'auto';
+    if (requested !== 'auto') {
+      return requested;
+    }
+
+    const socketPath = options.socketPath ?? JOURNAL_SOCKET_PATH;
+    if (process.platform === 'linux' && existsSync(socketPath)) {
+      return 'journald';
+    }
+
+    const managedEndpoint = this.getManagedEndpoint();
+    if (managedEndpoint) {
+      return 'managed';
+    }
+
+    return 'console';
+  }
+
+  private detectCloudProvider(): string {
+    if (process.env.VERCEL) return 'vercel';
+    if (process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.AWS_REGION) return 'aws';
+    if (process.env.K_SERVICE || process.env.GCP_PROJECT || process.env.FUNCTION_TARGET) return 'gcp';
+    if (process.env.WEBSITE_INSTANCE_ID || process.env.AZURE_FUNCTIONS_ENVIRONMENT || process.env.FUNCTIONS_WORKER_RUNTIME) return 'azure';
+    return 'local';
+  }
+
+  private getManagedEndpoint(): string {
+    return this.managed.endpoint || process.env.TS_JOURNALD_ENDPOINT || '';
   }
 
   private setupStaticFields(): void {
@@ -57,7 +104,10 @@ export class SystemdJournal {
   }
 
   private setupErrorHandling(): void {
-    this.socket.on('error', (error) => {
+    if (!this.socket) {
+      return;
+    }
+    this.socket.on('error', (error: Error) => {
       if (this.fallbackToConsole) {
         console.error('Journal socket error:', error.message);
       }
@@ -96,7 +146,7 @@ export class SystemdJournal {
     const fields = new Map(this.fieldsCache);
 
     // Priority
-    fields.set('PRIORITY', (entry.priority || Priority.INFO).toString());
+    fields.set('PRIORITY', (entry.priority ?? Priority.INFO).toString());
 
     // Message
     fields.set('MESSAGE', this.truncateMessage(entry.message));
@@ -131,9 +181,18 @@ export class SystemdJournal {
   public send(entry: JournalEntry): boolean {
     try {
       const fields = this.prepareFields(entry);
-      const success = this.socket.send(fields);
+      let success = false;
 
-      if (!success && this.fallbackToConsole) {
+      if (this.backend === 'journald' && this.socket) {
+        success = this.socket.send(fields);
+      } else if (this.backend === 'managed') {
+        success = this.sendToManagedBackend(entry, fields);
+      } else {
+        this.fallbackToConsoleLog(entry);
+        success = true;
+      }
+
+      if (!success && this.fallbackToConsole && this.backend !== 'console') {
         this.fallbackToConsoleLog(entry);
       }
 
@@ -147,19 +206,23 @@ export class SystemdJournal {
   }
 
   private fallbackToConsoleLog(entry: JournalEntry, error?: any): void {
-    const priority = entry.priority || Priority.INFO;
+    const priority = entry.priority ?? Priority.INFO;
     const prefix = `[${Priority[priority]}]`;
     const message = `${prefix} ${entry.message}`;
 
     switch (priority) {
-      case Priority.EMERG | Priority.ALERT | Priority.CRIT | Priority.ERR:
+      case Priority.EMERG:
+      case Priority.ALERT:
+      case Priority.CRIT:
+      case Priority.ERR:
         console.error(message);
         if (error) console.error(error);
         break;
       case Priority.WARNING:
         console.warn(message);
         break;
-      case Priority.NOTICE | Priority.INFO:
+      case Priority.NOTICE:
+      case Priority.INFO:
         console.log(message);
         break;
       case Priority.DEBUG:
@@ -170,6 +233,58 @@ export class SystemdJournal {
     if (entry.fields && Object.keys(entry.fields).length > 0) {
       console.log('Fields:', entry.fields);
     }
+  }
+
+  private sendToManagedBackend(entry: JournalEntry, fields: Map<string, string>): boolean {
+    const endpoint = this.getManagedEndpoint();
+    if (!endpoint) {
+      return false;
+    }
+
+    if (typeof fetch !== 'function') {
+      return false;
+    }
+
+    const timeoutMs = this.managed.timeoutMs ?? 2000;
+    const payload = {
+      message: entry.message,
+      priority: entry.priority ?? Priority.INFO,
+      fields: Object.fromEntries(fields),
+      meta: {
+        backend: this.backend,
+        cloudProvider: this.cloudProvider,
+        pid: this.pid,
+        uid: this.uid,
+        hostname: this.hostname,
+      },
+    };
+
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      ...(this.managed.headers ?? {}),
+    };
+
+    const apiKey = this.managed.apiKey || process.env.TS_JOURNALD_API_KEY;
+    if (apiKey) {
+      headers.authorization = `Bearer ${apiKey}`;
+    }
+
+    void fetch(endpoint, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(timeoutMs),
+    }).then((response) => {
+      if (!response.ok) {
+        throw new Error(`Managed backend HTTP ${response.status}`);
+      }
+    }).catch((error: unknown) => {
+      if (this.fallbackToConsole) {
+        console.error('Managed log backend error:', error);
+      }
+    });
+
+    return true;
   }
 
   // Convenience methods
@@ -210,11 +325,19 @@ export class SystemdJournal {
   }
 
   public isConnected(): boolean {
-    return this.socket.isConnected();
+    if (this.backend === 'journald' && this.socket) {
+      return this.socket.isConnected();
+    }
+    if (this.backend === 'managed') {
+      return Boolean(this.getManagedEndpoint());
+    }
+    return true;
   }
 
   public close(): void {
-    this.socket.close();
+    if (this.socket) {
+      this.socket.close();
+    }
   }
 
   public addStaticField(name: string, value: string): void {
@@ -223,5 +346,9 @@ export class SystemdJournal {
 
   public removeStaticField(name: string): boolean {
     return this.fieldsCache.delete(name.toUpperCase());
+  }
+
+  public getBackend(): Exclude<JournalBackend, 'auto'> {
+    return this.backend;
   }
 }

@@ -1,8 +1,11 @@
 {
   "compilerOptions": {
-    "target": "ES2020",
+    "target": "ES2023",
     "module": "ESNext",
-    "lib": ["ES2020"],
+    "moduleResolution": "Bundler",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "verbatimModuleSyntax": true,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -12,12 +15,10 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "moduleResolution": "node",
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "baseUrl": ".",
     "paths": {
-      "*": ["node_modules/*"]
+      "*": ["./node_modules/*"]
     }
   },
   "include": [

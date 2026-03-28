@@ -22,6 +22,17 @@ export interface JournalOptions {
   socketPath?: string;
   fallbackToConsole?: boolean;
   maxRetries?: number;
+  backend?: JournalBackend;
+  managed?: ManagedBackendOptions;
+}
+
+export type JournalBackend = 'auto' | 'journald' | 'managed' | 'console';
+
+export interface ManagedBackendOptions {
+  endpoint?: string;
+  apiKey?: string;
+  headers?: Record<string, string>;
+  timeoutMs?: number;
 }
 
 export interface CallerInfo {

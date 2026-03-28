@@ -1,4 +1,4 @@
-import { CallerInfo } from './types';
+import type { CallerInfo } from './types';
 
 export class StackTrace {
   private static readonly nodeInternalPaths = [

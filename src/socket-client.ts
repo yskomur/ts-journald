@@ -1,5 +1,11 @@
+import { createRequire } from 'node:module';
 import { EventEmitter } from 'events';
 import { JOURNAL_SOCKET_PATH, FIELD_MAX_SIZE } from './constants';
+
+const requireCompat =
+  typeof require === 'function'
+    ? require
+    : createRequire(`${process.cwd()}/`);
 
 export class JournalSocket extends EventEmitter {
   private socket: any;
@@ -16,7 +22,7 @@ export class JournalSocket extends EventEmitter {
   private connect(): void {
     try {
       // Unix datagram socket oluştur
-      this.socket = require('unix-dgram').createSocket('unix_dgram')
+      this.socket = requireCompat('unix-dgram').createSocket('unix_dgram')
 
       this.socket.on('connect', () => {
         console.log('Journal socket connected');
