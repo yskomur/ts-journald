@@ -34,7 +34,7 @@ export class JournalSocket extends EventEmitter {
       this.socket.on('error', (error: Error) => {
         console.error('Journal socket error:', error.message);
         this.connected = false;
-        this.emit('error', error);
+        this.safeEmitError(error);
 
         // 5 saniye sonra tekrar dene
         setTimeout(() => this.reconnect(), 5000);
@@ -51,7 +51,7 @@ export class JournalSocket extends EventEmitter {
 
     } catch (error) {
       console.error('Failed to create journal socket:', error);
-      this.emit('error', error as Error);
+      this.safeEmitError(error as Error);
     }
   }
 
@@ -91,9 +91,15 @@ export class JournalSocket extends EventEmitter {
     this.socket.send(buffer, (error?: Error) => {
       if (error) {
         console.error('Journal send error:', error);
-        this.emit('error', error);
+        this.safeEmitError(error);
       }
     });
+  }
+
+  private safeEmitError(error: Error): void {
+    if (this.listenerCount('error') > 0) {
+      this.emit('error', error);
+    }
   }
 
   private validateField(name: string, value: string): boolean {
