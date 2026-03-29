@@ -1,6 +1,6 @@
 {
   "name": "@yskomur/ts-journald",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "description": "Pure TypeScript systemd-journald client using native Unix sockets",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
