@@ -1,11 +1,5 @@
-import { createRequire } from 'node:module';
 import { EventEmitter } from 'events';
 import { JOURNAL_SOCKET_PATH, FIELD_MAX_SIZE } from './constants';
-
-const requireCompat =
-  typeof require === 'function'
-    ? require
-    : createRequire(`${process.cwd()}/`);
 
 export class JournalSocket extends EventEmitter {
   private socket: any;
@@ -22,7 +16,7 @@ export class JournalSocket extends EventEmitter {
   private connect(): void {
     try {
       // Unix datagram socket oluştur
-      this.socket = requireCompat('unix-dgram').createSocket('unix_dgram')
+      this.socket = require('unix-dgram').createSocket('unix_dgram')
 
       this.socket.on('connect', () => {
         console.log('Journal socket connected');
@@ -34,7 +28,7 @@ export class JournalSocket extends EventEmitter {
       this.socket.on('error', (error: Error) => {
         console.error('Journal socket error:', error.message);
         this.connected = false;
-        this.safeEmitError(error);
+        this.emit('error', error);
 
         // 5 saniye sonra tekrar dene
         setTimeout(() => this.reconnect(), 5000);
@@ -51,7 +45,7 @@ export class JournalSocket extends EventEmitter {
 
     } catch (error) {
       console.error('Failed to create journal socket:', error);
-      this.safeEmitError(error as Error);
+      this.emit('error', error as Error);
     }
   }
 
@@ -91,15 +85,9 @@ export class JournalSocket extends EventEmitter {
     this.socket.send(buffer, (error?: Error) => {
       if (error) {
         console.error('Journal send error:', error);
-        this.safeEmitError(error);
+        this.emit('error', error);
       }
     });
-  }
-
-  private safeEmitError(error: Error): void {
-    if (this.listenerCount('error') > 0) {
-      this.emit('error', error);
-    }
   }
 
   private validateField(name: string, value: string): boolean {
