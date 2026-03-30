@@ -1,10 +1,19 @@
 {
   "name": "@yskomur/ts-journald",
-  "version": "2.0.3",
-  "description": "Pure TypeScript systemd-journald client using native Unix sockets",
+  "version": "2.1.1",
+  "description": "TypeScript and Node.js logger for systemd journald with structured logging, syslog priorities, cloud fallback, and support for SvelteKit, Express, Fastify, and NestJS services",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "import": "./dist/index.esm.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
   "scripts": {
     "clean": "rm -rf dist",
     "build": "npm run clean && rollup -c",
@@ -13,6 +22,9 @@
     "type-check": "tsc --noEmit"
   },
   "author": "Yavuz Selim KOMUR <yskomur@gmail.com>",
+  "contributors": [
+    "Codex"
+  ],
   "license": "MIT",
   "repository": {
     "type": "git",
@@ -26,11 +38,12 @@
     "@rollup/plugin-typescript": "^12.3.0",
     "@types/node": "^25.5.0",
     "@typescript/native-preview": "latest",
-    "rollup": "^4.60.0",
+    "rollup": "^4.60.1",
     "tslib": "^2.8.1"
   },
   "files": [
     "dist",
+    "llms.txt",
     "README.MD",
     "README-TR.MD",
     "LICENSE"
@@ -47,6 +60,23 @@
     "journald",
     "logging",
     "typescript",
+    "nodejs",
+    "logger",
+    "structured-logging",
+    "structured-logger",
+    "syslog",
+    "systemd-journal",
+    "linux-logging",
+    "observability",
+    "sveltekit",
+    "express",
+    "fastify",
+    "nestjs",
+    "serverless",
+    "vercel",
+    "aws",
+    "gcp",
+    "azure",
     "unix-socket"
   ],
   "dependencies": {

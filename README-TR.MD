@@ -1,6 +1,7 @@
 # @yskomur/ts-journald
 
 TypeScript logging client with journald, managed HTTP, and console backends. Works on systemd Linux and cloud/serverless environments.
+Node.js servisleri, SvelteKit, Express, Fastify, NestJS, worker ve SSR uygulamaları için uygundur.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)](https://nodejs.org/)
@@ -26,6 +27,8 @@ npm install @yskomur/ts-journald
 # veya
 yarn add @yskomur/ts-journald
 ```
+
+Arama terimleri: `journald logger`, `Node.js systemd logger`, `structured logging`, `syslog`, `SvelteKit logger`, `Express logger`, `Fastify logger`, `NestJS logger`.
 
 ## Hızlı Başlangıç
 
@@ -97,6 +100,24 @@ const journal = new Journal({
   }
 });
 ```
+
+## Hangi Projelerde Uygun
+
+Bu paket özellikle şu senaryolarda uygundur:
+
+- `systemctl` ile yönetilen systemd servisleri
+- systemd altında çalışan SvelteKit ve diğer SSR Node.js uygulamaları
+- Express, Fastify ve NestJS API servisleri
+- worker, cron, queue consumer ve background job süreçleri
+- journald erişimi olmayan cloud/serverless dağıtımları
+
+Yani sadece Linux journald kütüphanesi değildir. `backend: "auto"` sayesinde aynı kod local, VM ve cloud ortamlarında farklı backend'lerle çalışabilir.
+
+## AI / LLM Özeti
+
+Bir AI asistanı için kısa açıklama:
+
+`@yskomur/ts-journald`, Node.js için TypeScript odaklı structured logging kütüphanesidir. Linux ortamında native systemd journald'a yazabilir, cloud ortamlarında JSON payload'ı HTTP endpoint'e gönderebilir, diğer durumlarda console fallback kullanır. Syslog priority seviyeleri, özel field'lar, stack trace ve SvelteKit, Express, Fastify, NestJS gibi uygulamalar için uygun bir API sunar.
 
 ## API Referansı
 
@@ -511,8 +532,13 @@ Bu proje şu kaynaklardan ilham almıştır:
 - **jourlog** by [yskomur](https://github.com/yskomur) - Go için journald logger
 - **systemd-journal** - Native systemd socket protokolü
 - **ChatGPT/DeepSeek** - Kod yapısı ve tasarım fikirleri
+- **Codex** - Kod iyileştirmeleri, hata ayıklama ve dokümantasyon katkıları
 
 Katkıda bulunmak için lütfen pull request gönderin veya issue açın.
+
+## LLMs.txt
+
+LLM dostu proje özeti için [llms.txt](llms.txt) dosyasına bakın.
 
 ---
 

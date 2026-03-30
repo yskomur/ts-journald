@@ -1,11 +1,20 @@
+import { createRequire } from 'node:module';
 import { EventEmitter } from 'events';
 import { JOURNAL_SOCKET_PATH, FIELD_MAX_SIZE } from './constants';
+
+const requireCompat =
+  typeof require === 'function'
+    ? require
+    : createRequire(import.meta.url);
 
 export class JournalSocket extends EventEmitter {
   private socket: any;
   private connected: boolean = false;
   private queue: Buffer[] = [];
   private readonly socketPath: string;
+  private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private connectTimer: ReturnType<typeof setTimeout> | null = null;
+  private closed: boolean = false;
 
   constructor(socketPath: string = JOURNAL_SOCKET_PATH) {
     super();
@@ -14,9 +23,13 @@ export class JournalSocket extends EventEmitter {
   }
 
   private connect(): void {
+    if (this.closed) {
+      return;
+    }
+
     try {
       // Unix datagram socket oluştur
-      this.socket = require('unix-dgram').createSocket('unix_dgram')
+      this.socket = requireCompat('unix-dgram').createSocket('unix_dgram')
 
       this.socket.on('connect', () => {
         console.log('Journal socket connected');
@@ -31,7 +44,7 @@ export class JournalSocket extends EventEmitter {
         this.emit('error', error);
 
         // 5 saniye sonra tekrar dene
-        setTimeout(() => this.reconnect(), 5000);
+        this.scheduleReconnect();
       });
 
       this.socket.on('close', () => {
@@ -49,7 +62,35 @@ export class JournalSocket extends EventEmitter {
     }
   }
 
+  private clearTimers(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (this.connectTimer) {
+      clearTimeout(this.connectTimer);
+      this.connectTimer = null;
+    }
+  }
+
+  private scheduleReconnect(): void {
+    if (this.closed || this.reconnectTimer || this.connectTimer) {
+      return;
+    }
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.reconnect();
+    }, 5000);
+    this.reconnectTimer.unref?.();
+  }
+
   private reconnect(): void {
+    if (this.closed) {
+      return;
+    }
+
     if (this.socket) {
       try {
         this.socket.close();
@@ -61,11 +102,13 @@ export class JournalSocket extends EventEmitter {
     this.socket = null;
     this.connected = false;
 
-    setTimeout(() => {
+    this.connectTimer = setTimeout(() => {
+      this.connectTimer = null;
       if (!this.connected) {
         this.connect();
       }
     }, 5000);
+    this.connectTimer.unref?.();
   }
 
   private flushQueue(): void {
@@ -147,6 +190,8 @@ export class JournalSocket extends EventEmitter {
   }
 
   public close(): void {
+    this.closed = true;
+    this.clearTimers();
     if (this.socket) {
       try {
         this.socket.close();

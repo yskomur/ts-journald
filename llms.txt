@@ -1,0 +1,28 @@
+# @yskomur/ts-journald
+
+> TypeScript and Node.js logging library for systemd journald with structured logging, syslog priorities, automatic backend selection, cloud/serverless fallback, and compatibility with apps such as SvelteKit, Express, Fastify, and NestJS.
+
+Use this package when a Node.js service needs one logging API that can write to native journald on Linux systemd hosts, send JSON to a managed HTTP endpoint in cloud environments, or fall back to the console locally.
+
+Important notes:
+- Default `backend: "auto"` chooses `journald`, then `managed`, then `console`.
+- Global helper functions create a default singleton logger instance.
+- Call `close()` during shutdown if you manage logger lifecycle explicitly.
+- Works best for Linux services, background workers, APIs, and SSR apps running under systemd.
+
+## Docs
+
+- [README](https://github.com/yskomur/ts-journald/blob/main/README.MD): English package overview, installation, API, and examples.
+- [README-TR](https://github.com/yskomur/ts-journald/blob/main/README-TR.MD): Turkish package overview, API, and examples.
+- [npm package](https://www.npmjs.com/package/@yskomur/ts-journald): Published package entry for installation and version discovery.
+
+## Common tasks
+
+- [Quick Start](https://github.com/yskomur/ts-journald/blob/main/README.MD#quick-start): Use global helpers or create a `Journal` instance.
+- [Backend Behavior](https://github.com/yskomur/ts-journald/blob/main/README.MD#backend-behavior): Understand automatic backend selection.
+- [Cloud Usage](https://github.com/yskomur/ts-journald/blob/main/README.MD#cloud-usage): Configure managed HTTP logging for cloud and serverless deployments.
+- [Troubleshooting](https://github.com/yskomur/ts-journald/blob/main/README.MD#troubleshooting): Diagnose journald socket or runtime issues.
+
+## Optional
+
+- [Repository](https://github.com/yskomur/ts-journald): Source code, issues, and release history.

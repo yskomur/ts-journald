@@ -9,6 +9,26 @@ import type {
 
 // Default singleton instance
 let defaultInstance: SystemdJournal | null = null;
+let cleanupHooksRegistered = false;
+
+function registerCleanupHooks(): void {
+  if (cleanupHooksRegistered) {
+    return;
+  }
+
+  const cleanup = () => {
+    if (defaultInstance) {
+      defaultInstance.close();
+    }
+  };
+
+  process.once('SIGTERM', cleanup);
+  process.once('SIGINT', cleanup);
+  process.once('beforeExit', cleanup);
+  process.once('exit', cleanup);
+
+  cleanupHooksRegistered = true;
+}
 
 export { SystemdJournal as Journal };
 export { Priority };
@@ -21,6 +41,7 @@ export type {
 
 export function createJournal(options?: JournalOptions): SystemdJournal {
   defaultInstance = new SystemdJournal(options);
+  registerCleanupHooks();
   return defaultInstance;
 }
 

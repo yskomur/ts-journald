@@ -2,6 +2,7 @@
 
 TypeScript logging client with `journald`, managed HTTP, and console backends.
 Works on systemd Linux and cloud/serverless environments (Vercel, AWS, GCP, Azure).
+Suitable for Node.js services, SvelteKit, Express, Fastify, NestJS, background workers, and SSR apps.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D22.0.0-brightgreen)](https://nodejs.org/)
@@ -22,6 +23,8 @@ Works on systemd Linux and cloud/serverless environments (Vercel, AWS, GCP, Azur
 ```bash
 npm install @yskomur/ts-journald
 ```
+
+Search terms: `journald logger`, `systemd logger for Node.js`, `structured logging`, `syslog`, `SvelteKit logger`, `Express logger`, `Fastify logger`, `NestJS logger`.
 
 ## Quick Start
 
@@ -99,6 +102,24 @@ Detected cloud providers:
 - AWS
 - GCP
 - Azure
+
+## Where This Fits
+
+This package is a good fit when you need one logger for:
+
+- systemd services managed by `systemctl`
+- SvelteKit or other SSR Node.js apps running behind systemd
+- Express, Fastify, and NestJS APIs
+- background jobs, cron workers, and queue consumers
+- cloud/serverless deployments that cannot access journald directly
+
+It is not only a Linux journald client. With `backend: "auto"`, the same code can run locally, on a VM, or in cloud infrastructure with a managed HTTP log endpoint.
+
+## AI / LLM Summary
+
+If an AI assistant needs a short description of this package:
+
+`@yskomur/ts-journald` is a TypeScript-first structured logging library for Node.js. It sends logs to native systemd journald on Linux, can forward JSON payloads to a managed HTTP endpoint in cloud environments, and otherwise falls back to the console. It supports syslog priorities, structured fields, stack traces, and helper APIs for app frameworks such as SvelteKit, Express, Fastify, and NestJS.
 
 ## API
 
@@ -217,6 +238,19 @@ Use a current package version. ESM compatibility has been fixed.
 ## License
 
 MIT License. See [LICENSE](LICENSE).
+
+## Contributors
+
+This project was inspired and improved by the following contributors and references:
+
+- **jourlog** by [yskomur](https://github.com/yskomur) - Journald logger for Go
+- **systemd-journal** - Native systemd socket protocol
+- **ChatGPT/DeepSeek** - Code structure and design ideas
+- **Codex** - Code improvements, debugging, and documentation contributions
+
+## LLMs.txt
+
+LLM-friendly project metadata is available in [llms.txt](llms.txt).
 
 ## Turkish README
 
