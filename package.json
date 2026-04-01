@@ -1,6 +1,6 @@
 {
   "name": "@yskomur/ts-journald",
-  "version": "3.0.0",
+  "version": "3.0.1",
   "description": "TypeScript and Node.js logger for systemd journald with structured logging, syslog priorities, cloud fallback, and support for SvelteKit, Express, Fastify, and NestJS services",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
@@ -80,7 +80,7 @@
     "native-backend"
   ],
   "peerDependencies": {
-    "@yskomur/node-sdjournal": "^0.2.0"
+    "@yskomur/node-sdjournal": "^0.5.0"
   },
   "peerDependenciesMeta": {
     "@yskomur/node-sdjournal": {
