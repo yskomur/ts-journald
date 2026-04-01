@@ -10,7 +10,7 @@ Suitable for Node.js services, SvelteKit, Express, Fastify, NestJS, background w
 ## Features
 
 - `auto` backend selection: `journald` -> `managed` -> `console`
-- Native Unix socket support for systemd journald
+- Optional native journald writer via `@yskomur/node-sdjournal`
 - Cloud-aware runtime detection (Vercel/AWS/GCP/Azure)
 - Stack trace and caller metadata support
 - Structured custom fields
@@ -22,6 +22,8 @@ Suitable for Node.js services, SvelteKit, Express, Fastify, NestJS, background w
 
 ```bash
 npm install @yskomur/ts-journald
+# optional Linux/systemd writer backend
+npm install @yskomur/node-sdjournal
 ```
 
 Search terms: `journald logger`, `systemd logger for Node.js`, `structured logging`, `syslog`, `SvelteKit logger`, `Express logger`, `Fastify logger`, `NestJS logger`.
@@ -64,7 +66,7 @@ console.log('Active backend:', journal.getBackend());
 
 Default behavior with `backend: "auto"`:
 
-1. If running on Linux and journald socket exists, uses `journald`.
+1. If running on Linux and `@yskomur/node-sdjournal` is installed, uses `journald`.
 2. Otherwise, if `managed.endpoint` (or `TS_JOURNALD_ENDPOINT`) exists, uses `managed`.
 3. Otherwise, falls back to `console`.
 
@@ -78,7 +80,7 @@ new Journal({ backend: 'console' });
 
 ## Cloud Usage
 
-In most serverless/cloud environments, journald socket is not available.
+In most serverless/cloud environments, native journald access is not available.
 Use managed backend with a custom ingestion API:
 
 ```ts
@@ -210,7 +212,7 @@ Managed backend sends JSON payload similar to:
 ## System Requirements
 
 - Node.js >= 22.0.0
-- For `journald` backend: systemd Linux + access to `/run/systemd/journal/socket`
+- For `journald` backend: systemd Linux + installed `@yskomur/node-sdjournal`
 - For `managed` backend: reachable HTTP endpoint
 - For `console` backend: no extra requirement
 
@@ -220,19 +222,19 @@ Managed backend sends JSON payload similar to:
 
 Use a current package version. ESM compatibility has been fixed.
 
-### Journald socket errors
+### Journald backend not active
 
 1. Check journald service:
    ```bash
    sudo systemctl status systemd-journald
    ```
-2. Check socket file:
+2. Check that the native writer package is installed:
    ```bash
-   ls -la /run/systemd/journal/socket
+   npm ls @yskomur/node-sdjournal
    ```
-3. Check permissions:
+3. If native build failed, verify systemd headers:
    ```bash
-   ls -la /run/systemd/journal/ | grep socket
+   pkg-config --modversion libsystemd
    ```
 
 ## License
@@ -244,7 +246,7 @@ MIT License. See [LICENSE](LICENSE).
 This project was inspired and improved by the following contributors and references:
 
 - **jourlog** by [yskomur](https://github.com/yskomur) - Journald logger for Go
-- **systemd-journal** - Native systemd socket protocol
+- **node-sdjournal** - Native `sd_journal_*` writer/reader backend package
 - **ChatGPT/DeepSeek** - Code structure and design ideas
 - **Codex** - Code improvements, debugging, and documentation contributions
 
