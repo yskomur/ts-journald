@@ -10,12 +10,10 @@ Node.js servisleri, SvelteKit, Express, Fastify, NestJS, worker ve SSR uygulamal
 ## Özellikler
 
 - 🚀 **Multi Backend** - `journald`, `managed` (HTTP), `console`, `auto` seçim desteği
-- ⚡ **High Performance** - Native Unix socket ile direkt journald bağlantısı
+- ⚡ **Native Backend Desteği** - `@yskomur/node-sdjournal` ile journald yazımı
 - 📍 **Stack Trace Integration** - Otomatik çağrı yeri takibi
 - 🔧 **Full TypeScript Support** - Tam tip güvenliği
-- 🔄 **Auto Reconnect** - Bağlantı koparsa otomatik yeniden bağlanma
 - 📊 **All Priority Levels** - EMERG(0)'dan DEBUG(7)'ye tüm syslog seviyeleri
-- 💾 **Queue System** - Bağlantı yokken logları buffer'da tutar
 - 🛡️ **Fallback Console** - Journald yoksa console'a yazar
 - 🔍 **Field Validation** - Journald format kurallarına uygun validation
 - ☁️ **Cloud Aware** - Vercel/AWS/GCP/Azure ortamlarında otomatik uygun backend seçimi
@@ -26,6 +24,9 @@ Node.js servisleri, SvelteKit, Express, Fastify, NestJS, worker ve SSR uygulamal
 npm install @yskomur/ts-journald
 # veya
 yarn add @yskomur/ts-journald
+
+# Linux/systemd journald backend için opsiyonel
+npm install @yskomur/node-sdjournal
 ```
 
 Arama terimleri: `journald logger`, `Node.js systemd logger`, `structured logging`, `syslog`, `SvelteKit logger`, `Express logger`, `Fastify logger`, `NestJS logger`.
@@ -53,8 +54,7 @@ const journal = new Journal({
   identifier: 'my-application',
   syslogIdentifier: 'my-node-app',
   captureStackTrace: true,    // Hatalarda stack trace ekler
-  fallbackToConsole: true,    // Journald yoksa console'a yazar
-  socketPath: '/run/systemd/journal/socket' // Varsayılan socket yolu
+  fallbackToConsole: true     // Journald yoksa console'a yazar
 });
 
 journal.info('Service initialized');
@@ -64,8 +64,8 @@ journal.info('Service initialized');
 
 Varsayılan `backend: "auto"` davranışı:
 
-1. Linux + journald socket varsa `journald`
-2. Socket yoksa ve `managed.endpoint` (veya `TS_JOURNALD_ENDPOINT`) varsa `managed`
+1. Linux + `@yskomur/node-sdjournal` kuruluysa `journald`
+2. Native backend yoksa ve `managed.endpoint` (veya `TS_JOURNALD_ENDPOINT`) varsa `managed`
 3. Diğer durumlarda `console`
 
 ```typescript
@@ -86,7 +86,7 @@ console.log(journal.getBackend()); // journald | managed | console
 
 ### Vercel / AWS / GCP / Azure
 
-Cloud ortamlarda çoğunlukla journald socket bulunmaz. Bu durumda:
+Cloud ortamlarda çoğunlukla native journald erişimi bulunmaz. Bu durumda:
 
 1. `backend: "auto"` + `managed.endpoint` kullanın
 2. Endpoint yoksa loglar console'a düşer
@@ -156,7 +156,7 @@ journal.debug(message: string, fields?: Record<string, any>): boolean
 journal.log(priority: Priority, message: string, fields?: Record<string, any>): boolean
 
 // Yardımcı metodlar
-journal.isConnected(): boolean      // Socket bağlantısını kontrol et
+journal.isConnected(): boolean      // Aktif backend kullanılabilir mi kontrol et
 journal.close(): void               // Bağlantıyı kapat
 journal.addStaticField(name: string, value: string): void  // Tüm loglara eklenen field
 journal.removeStaticField(name: string): boolean           // Static field kaldır
@@ -235,34 +235,28 @@ const journal2 = new Journal({
 });
 ```
 
-### Custom Socket Yolu
+### Native Backend Notu
 
 ```typescript
 import { Journal } from '@yskomur/ts-journald';
 
-// Farklı socket yolu kullanma
 const journal = new Journal({
-  socketPath: '/var/run/systemd/journal/socket', // Özel socket yolu
   fallbackToConsole: false // Console'a fallback yapma
 });
 
-// Bağlantı durumunu kontrol et
+// Native backend kurulu değilse false döner
 if (!journal.isConnected()) {
-  console.warn('Journald socket bağlantısı yok');
+  console.warn('Native journald backend aktif değil');
 }
 ```
 
-### Queue ve Bağlantı Yönetimi
+### Backend Durumu
 
 ```typescript
 import { Journal } from '@yskomur/ts-journald';
 
 const journal = new Journal();
 
-// Socket bağlantısı koparsa loglar otomatik olarak queue'lanır
-// Bağlantı geri geldiğinde queue'daki loglar gönderilir
-
-// Manuel bağlantı kontrolü
 setInterval(() => {
   console.log('Journal connected:', journal.isConnected());
 }, 5000);
@@ -395,7 +389,6 @@ journal.info('Test', {
 
 - **MESSAGE max size**: 48KB (otomatik truncate edilir)
 - **FIELD max size**: 64KB (daha büyük değerler gönderilmez)
-- **Queue size**: Sınırsız (uygulama memory'sine bağlı)
 
 ## Test ve Geliştirme
 
@@ -421,7 +414,7 @@ describe('Journal', () => {
   beforeEach(() => {
     journal = new Journal({
       fallbackToConsole: false,
-      socketPath: '/tmp/test-journal.sock' // Test socket
+      fallbackToConsole: true
     });
   });
   
@@ -443,31 +436,27 @@ describe('Journal', () => {
 ## Sistem Gereksinimleri
 
 - Node.js >= 22.0.0
-- Journald backend için: systemd Linux + `/run/systemd/journal/socket` erişimi
+- Journald backend için: systemd Linux + `@yskomur/node-sdjournal`
 - Managed backend için: erişilebilir bir HTTP log endpoint'i
 - Console backend için: ek gereksinim yok
 
 ## Sorun Giderme
 
-### "Socket connection failed" hatası
+### "Native journald backend aktif değil" durumu
 
 1. **Journald servisini kontrol edin:**
    ```bash
    sudo systemctl status systemd-journald
    ```
 
-2. **Socket dosyasını kontrol edin:**
+2. **Opsiyonel native paketin kurulu olduğunu kontrol edin:**
    ```bash
-   ls -la /run/systemd/journal/socket
+   npm ls @yskomur/node-sdjournal
    ```
 
-3. **Socket erişim izinleri:**
+3. **Native build bağımlılıklarını kontrol edin:**
    ```bash
-   # Socket grubunu kontrol et
-   ls -la /run/systemd/journal/ | grep socket
-   
-   # Kullanıcıyı systemd-journal grubuna ekle
-   sudo usermod -a -G systemd-journal $USER
+   pkg-config --modversion libsystemd
    ```
 
 ### Fallback Console Kullanımı
@@ -530,7 +519,7 @@ MIT License - Bkz. [LICENSE](LICENSE) dosyası.
 Bu proje şu kaynaklardan ilham almıştır:
 
 - **jourlog** by [yskomur](https://github.com/yskomur) - Go için journald logger
-- **systemd-journal** - Native systemd socket protokolü
+- **node-sdjournal** - Native `sd_journal_*` backend paketi
 - **ChatGPT/DeepSeek** - Kod yapısı ve tasarım fikirleri
 - **Codex** - Kod iyileştirmeleri, hata ayıklama ve dokümantasyon katkıları
 

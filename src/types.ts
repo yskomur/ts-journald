@@ -19,7 +19,6 @@ export interface JournalOptions {
   identifier?: string;
   syslogIdentifier?: string;
   captureStackTrace?: boolean;
-  socketPath?: string;
   fallbackToConsole?: boolean;
   maxRetries?: number;
   backend?: JournalBackend;

@@ -1,6 +1,5 @@
-import { existsSync } from 'node:fs';
 import { hostname } from 'node:os';
-import { JournalSocket } from './socket-client';
+import { NativeJournalWriter } from './native-writer';
 import { StackTrace } from './stack-trace';
 import {
   Priority,
@@ -12,10 +11,10 @@ import type {
   JournalOptions,
   ManagedBackendOptions,
 } from './types';
-import { JOURNAL_SOCKET_PATH, MESSAGE_MAX_SIZE } from './constants';
+import { MESSAGE_MAX_SIZE } from './constants';
 
 export class SystemdJournal {
-  private readonly socket: JournalSocket | null;
+  private readonly writer: NativeJournalWriter | null;
   private readonly backend: Exclude<JournalBackend, 'auto'>;
   private readonly identifier: string;
   private readonly syslogIdentifier: string;
@@ -34,12 +33,9 @@ export class SystemdJournal {
     this.captureStackTrace = options.captureStackTrace ?? true;
     this.fallbackToConsole = options.fallbackToConsole ?? true;
     this.managed = options.managed ?? {};
+    this.writer = process.platform === 'linux' ? new NativeJournalWriter() : null;
     this.backend = this.resolveBackend(options);
     this.cloudProvider = this.detectCloudProvider();
-
-    this.socket = this.backend === 'journald'
-      ? new JournalSocket(options.socketPath)
-      : null;
     this.pid = process.pid;
     this.uid = process.getuid ? process.getuid() : 0;
     this.hostname = hostname();
@@ -47,9 +43,6 @@ export class SystemdJournal {
     this.fieldsCache = new Map();
     this.setupStaticFields();
 
-    if (this.socket) {
-      this.setupErrorHandling();
-    }
   }
 
   private resolveBackend(options: JournalOptions): Exclude<JournalBackend, 'auto'> {
@@ -58,8 +51,7 @@ export class SystemdJournal {
       return requested;
     }
 
-    const socketPath = options.socketPath ?? JOURNAL_SOCKET_PATH;
-    if (process.platform === 'linux' && existsSync(socketPath)) {
+    if (process.platform === 'linux' && this.writer?.isAvailable()) {
       return 'journald';
     }
 
@@ -101,17 +93,6 @@ export class SystemdJournal {
     if (process.argv.length > 0) {
       this.fieldsCache.set('CMDLINE', process.argv.join(' '));
     }
-  }
-
-  private setupErrorHandling(): void {
-    if (!this.socket) {
-      return;
-    }
-    this.socket.on('error', (error: Error) => {
-      if (this.fallbackToConsole) {
-        console.error('Journal socket error:', error.message);
-      }
-    });
   }
 
   private truncateMessage(message: string): string {
@@ -183,8 +164,8 @@ export class SystemdJournal {
       const fields = this.prepareFields(entry);
       let success = false;
 
-      if (this.backend === 'journald' && this.socket) {
-        success = this.socket.send(fields);
+      if (this.backend === 'journald' && this.writer) {
+        success = this.writer.send(entry, fields);
       } else if (this.backend === 'managed') {
         success = this.sendToManagedBackend(entry, fields);
       } else {
@@ -325,8 +306,8 @@ export class SystemdJournal {
   }
 
   public isConnected(): boolean {
-    if (this.backend === 'journald' && this.socket) {
-      return this.socket.isConnected();
+    if (this.backend === 'journald') {
+      return this.writer?.isAvailable() ?? false;
     }
     if (this.backend === 'managed') {
       return Boolean(this.getManagedEndpoint());
@@ -335,8 +316,8 @@ export class SystemdJournal {
   }
 
   public close(): void {
-    if (this.socket) {
-      this.socket.close();
+    if (this.writer) {
+      this.writer.close();
     }
   }
 
