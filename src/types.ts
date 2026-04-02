@@ -19,13 +19,15 @@ export interface JournalOptions {
   identifier?: string;
   syslogIdentifier?: string;
   captureStackTrace?: boolean;
-  fallbackToConsole?: boolean;
   maxRetries?: number;
   backend?: JournalBackend;
+  fallback?: JournalFallback;
   managed?: ManagedBackendOptions;
 }
 
 export type JournalBackend = 'auto' | 'journald' | 'managed' | 'console';
+export type JournalFallback = 'console' | 'dummy';
+export type JournalRuntimeBackend = Exclude<JournalBackend, 'auto'> | 'dummy';
 
 export interface ManagedBackendOptions {
   endpoint?: string;

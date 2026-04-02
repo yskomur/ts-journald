@@ -14,7 +14,7 @@ Node.js servisleri, SvelteKit, Express, Fastify, NestJS, worker ve SSR uygulamal
 - 📍 **Stack Trace Integration** - Otomatik çağrı yeri takibi
 - 🔧 **Full TypeScript Support** - Tam tip güvenliği
 - 📊 **All Priority Levels** - EMERG(0)'dan DEBUG(7)'ye tüm syslog seviyeleri
-- 🛡️ **Fallback Console** - Journald yoksa console'a yazar
+- 🛡️ **Açık Fallback Modu** - `console` veya `dummy` fallback seçimi
 - 🔍 **Field Validation** - Journald format kurallarına uygun validation
 - ☁️ **Cloud Aware** - Vercel/AWS/GCP/Azure ortamlarında otomatik uygun backend seçimi
 
@@ -54,7 +54,7 @@ const journal = new Journal({
   identifier: 'my-application',
   syslogIdentifier: 'my-node-app',
   captureStackTrace: true,    // Hatalarda stack trace ekler
-  fallbackToConsole: true     // Journald yoksa console'a yazar
+  fallback: 'dummy'           // Console'a yazmadan log'u yutar
 });
 
 journal.info('Service initialized');
@@ -66,13 +66,14 @@ Varsayılan `backend: "auto"` davranışı:
 
 1. Linux + `@yskomur/node-sdjournal` kuruluysa `journald`
 2. Native backend yoksa ve `managed.endpoint` (veya `TS_JOURNALD_ENDPOINT`) varsa `managed`
-3. Diğer durumlarda `console`
+3. Diğer durumlarda `fallback: 'console'` veya `fallback: 'dummy'` gerekir
 
 ```typescript
 import { Journal } from '@yskomur/ts-journald';
 
 const journal = new Journal({
   backend: 'auto',
+  fallback: 'console',
   managed: {
     endpoint: process.env.TS_JOURNALD_ENDPOINT,
     apiKey: process.env.TS_JOURNALD_API_KEY,
@@ -81,7 +82,7 @@ const journal = new Journal({
 });
 
 journal.info('Cloud-safe log', { service: 'api' });
-console.log(journal.getBackend()); // journald | managed | console
+console.log(journal.getBackend()); // journald | managed | console | dummy
 ```
 
 ### Vercel / AWS / GCP / Azure
@@ -89,11 +90,12 @@ console.log(journal.getBackend()); // journald | managed | console
 Cloud ortamlarda çoğunlukla native journald erişimi bulunmaz. Bu durumda:
 
 1. `backend: "auto"` + `managed.endpoint` kullanın
-2. Endpoint yoksa loglar console'a düşer
+2. Endpoint yoksa `fallback` secin
 
 ```typescript
 const journal = new Journal({
   backend: 'auto',
+  fallback: 'dummy',
   managed: {
     endpoint: 'https://logs.example.com/v1/ingest',
     apiKey: process.env.LOG_API_KEY
@@ -111,13 +113,13 @@ Bu paket özellikle şu senaryolarda uygundur:
 - worker, cron, queue consumer ve background job süreçleri
 - journald erişimi olmayan cloud/serverless dağıtımları
 
-Yani sadece Linux journald kütüphanesi değildir. `backend: "auto"` sayesinde aynı kod local, VM ve cloud ortamlarında farklı backend'lerle çalışabilir.
+Yani sadece Linux journald kütüphanesi değildir. `backend: "auto"` ve açık fallback seçimi sayesinde aynı kod local, VM ve cloud ortamlarında farklı backend'lerle çalışabilir.
 
 ## AI / LLM Özeti
 
 Bir AI asistanı için kısa açıklama:
 
-`@yskomur/ts-journald`, Node.js için TypeScript odaklı structured logging kütüphanesidir. Linux ortamında native systemd journald'a yazabilir, cloud ortamlarında JSON payload'ı HTTP endpoint'e gönderebilir, diğer durumlarda console fallback kullanır. Syslog priority seviyeleri, özel field'lar, stack trace ve SvelteKit, Express, Fastify, NestJS gibi uygulamalar için uygun bir API sunar.
+`@yskomur/ts-journald`, Node.js için TypeScript odaklı structured logging kütüphanesidir. Linux ortamında native systemd journald'a yazabilir, cloud ortamlarında JSON payload'ı HTTP endpoint'e gönderebilir ve uygun runtime backend yoksa açık `console` veya `dummy` fallback kullanır. Syslog priority seviyeleri, özel field'lar, stack trace ve SvelteKit, Express, Fastify, NestJS gibi uygulamalar için uygun bir API sunar.
 
 ## API Referansı
 
@@ -160,7 +162,7 @@ journal.isConnected(): boolean      // Aktif backend kullanılabilir mi kontrol 
 journal.close(): void               // Bağlantıyı kapat
 journal.addStaticField(name: string, value: string): void  // Tüm loglara eklenen field
 journal.removeStaticField(name: string): boolean           // Static field kaldır
-journal.getBackend(): 'journald' | 'managed' | 'console'  // Aktif backend'i döndür
+journal.getBackend(): 'journald' | 'managed' | 'console' | 'dummy'  // Aktif backend'i döndür
 ```
 
 ### Global Fonksiyonlar
@@ -241,13 +243,11 @@ const journal2 = new Journal({
 import { Journal } from '@yskomur/ts-journald';
 
 const journal = new Journal({
-  fallbackToConsole: false // Console'a fallback yapma
+  backend: 'auto',
+  fallback: 'dummy'
 });
 
-// Native backend kurulu değilse false döner
-if (!journal.isConnected()) {
-  console.warn('Native journald backend aktif değil');
-}
+journal.info('Sessiz fallback aktif');
 ```
 
 ### Backend Durumu
@@ -395,9 +395,9 @@ journal.info('Test', {
 ### Development Modu
 
 ```typescript
-// Geliştirme ortamında console fallback aktif
+// Geliştirme ortamında console, production'da dummy fallback
 const devJournal = new Journal({
-  fallbackToConsole: process.env.NODE_ENV !== 'production',
+  fallback: process.env.NODE_ENV !== 'production' ? 'console' : 'dummy',
   captureStackTrace: process.env.NODE_ENV === 'development'
 });
 ```
@@ -413,8 +413,8 @@ describe('Journal', () => {
   
   beforeEach(() => {
     journal = new Journal({
-      fallbackToConsole: false,
-      fallbackToConsole: true
+      backend: 'auto',
+      fallback: 'dummy'
     });
   });
   
@@ -459,17 +459,20 @@ describe('Journal', () => {
    pkg-config --modversion libsystemd
    ```
 
-### Fallback Console Kullanımı
+### Fallback Kullanımı
 
 ```typescript
-// Journald yoksa otomatik console'a yazar
+// Journald/managed yoksa console'a düş
 const journal = new Journal({
-  fallbackToConsole: true  // Default: true
+  backend: 'auto',
+  fallback: 'console'
 });
 
-// Sadece bağlantı durumunu logla
-journal.info('Test', { _consoleOnly: 'connection test' });
-console.log('Is connected:', journal.isConnected());
+// Sessiz no-op fallback
+const silentJournal = new Journal({
+  backend: 'auto',
+  fallback: 'dummy'
+});
 ```
 
 ## Performans İpuçları
@@ -531,4 +534,4 @@ LLM dostu proje özeti için [llms.txt](llms.txt) dosyasına bakın.
 
 ---
 
-**Not**: Bu kütüphane sadece systemd ile sınırlı değildir. `backend: "auto"` ile ortamınıza göre `journald`, `managed`, veya `console` backend'ine geçer.
+**Not**: Bu kütüphane sadece systemd ile sınırlı değildir. `backend: "auto"` ile ortamınıza göre `journald` veya `managed` backend'ine geçer; bunlar yoksa açık fallback seçimi gerekir.

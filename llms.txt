@@ -1,11 +1,11 @@
 # @yskomur/ts-journald
 
-> TypeScript and Node.js logging library for systemd journald with structured logging, syslog priorities, automatic backend selection, cloud/serverless fallback, and compatibility with apps such as SvelteKit, Express, Fastify, and NestJS.
+> TypeScript and Node.js logging library for systemd journald with structured logging, syslog priorities, automatic backend selection, explicit `console`/`dummy` fallback modes, and compatibility with apps such as SvelteKit, Express, Fastify, and NestJS.
 
-Use this package when a Node.js service needs one logging API that can write to journald through the optional `@yskomur/node-sdjournal` backend on Linux systemd hosts, send JSON to a managed HTTP endpoint in cloud environments, or fall back to the console locally.
+Use this package when a Node.js service needs one logging API that can write to journald through the optional `@yskomur/node-sdjournal` backend on Linux systemd hosts, send JSON to a managed HTTP endpoint in cloud environments, or use an explicit `console` or `dummy` fallback when no runtime backend is available.
 
 Important notes:
-- Default `backend: "auto"` chooses `journald`, then `managed`, then `console`.
+- Default `backend: "auto"` chooses `journald`, then `managed`; if neither is available, configure `fallback: "console"` or `fallback: "dummy"`.
 - Global helper functions create a default singleton logger instance.
 - Call `close()` during shutdown if you manage logger lifecycle explicitly.
 - Works best for Linux services, background workers, APIs, and SSR apps running under systemd.
