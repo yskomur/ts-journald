@@ -6,20 +6,20 @@ import {
 } from './types';
 import type {
   CallerInfo,
-  JournalBackend,
   JournalEntry,
   JournalOptions,
+  JournalRuntimeBackend,
   ManagedBackendOptions,
 } from './types';
 import { MESSAGE_MAX_SIZE } from './constants';
 
 export class SystemdJournal {
   private readonly writer: NativeJournalWriter | null;
-  private readonly backend: Exclude<JournalBackend, 'auto'>;
+  private readonly backend: JournalRuntimeBackend;
   private readonly identifier: string;
   private readonly syslogIdentifier: string;
   private readonly captureStackTrace: boolean;
-  private readonly fallbackToConsole: boolean;
+  private readonly fallback: JournalOptions['fallback'];
   private readonly managed: ManagedBackendOptions;
   private readonly pid: number;
   private readonly uid: number;
@@ -31,7 +31,7 @@ export class SystemdJournal {
     this.identifier = options.identifier || process.title || 'nodejs';
     this.syslogIdentifier = options.syslogIdentifier || this.identifier;
     this.captureStackTrace = options.captureStackTrace ?? true;
-    this.fallbackToConsole = options.fallbackToConsole ?? true;
+    this.fallback = options.fallback;
     this.managed = options.managed ?? {};
     this.writer = process.platform === 'linux' ? new NativeJournalWriter() : null;
     this.backend = this.resolveBackend(options);
@@ -45,7 +45,7 @@ export class SystemdJournal {
 
   }
 
-  private resolveBackend(options: JournalOptions): Exclude<JournalBackend, 'auto'> {
+  private resolveBackend(options: JournalOptions): JournalRuntimeBackend {
     const requested = options.backend ?? 'auto';
     if (requested !== 'auto') {
       return requested;
@@ -60,7 +60,14 @@ export class SystemdJournal {
       return 'managed';
     }
 
-    return 'console';
+    return this.getRequiredFallback('No journald or managed backend is available for backend: "auto".');
+  }
+
+  private getRequiredFallback(message: string): JournalRuntimeBackend {
+    if (this.fallback) {
+      return this.fallback;
+    }
+    throw new Error(`${message} Configure fallback: "console" or fallback: "dummy".`);
   }
 
   private detectCloudProvider(): string {
@@ -168,25 +175,29 @@ export class SystemdJournal {
         success = this.writer.send(entry, fields);
       } else if (this.backend === 'managed') {
         success = this.sendToManagedBackend(entry, fields);
+      } else if (this.backend === 'dummy') {
+        success = true;
       } else {
-        this.fallbackToConsoleLog(entry);
+        this.emitToConsole(entry);
         success = true;
       }
 
-      if (!success && this.fallbackToConsole && this.backend !== 'console') {
-        this.fallbackToConsoleLog(entry);
+      if (!success && this.backend !== 'console' && this.backend !== 'dummy') {
+        this.applyFallback(entry);
       }
 
       return success;
     } catch (error) {
-      if (this.fallbackToConsole) {
-        this.fallbackToConsoleLog(entry, error);
+      if (this.backend === 'console' || this.backend === 'dummy') {
+        throw error;
       }
+
+      this.applyFallback(entry, error);
       return false;
     }
   }
 
-  private fallbackToConsoleLog(entry: JournalEntry, error?: any): void {
+  private emitToConsole(entry: JournalEntry, error?: unknown): void {
     const priority = entry.priority ?? Priority.INFO;
     const prefix = `[${Priority[priority]}]`;
     const message = `${prefix} ${entry.message}`;
@@ -214,6 +225,18 @@ export class SystemdJournal {
     if (entry.fields && Object.keys(entry.fields).length > 0) {
       console.log('Fields:', entry.fields);
     }
+  }
+
+  private applyFallback(entry: JournalEntry, error?: unknown): void {
+    const fallback = this.getRequiredFallback(
+      `Backend "${this.backend}" failed and no fallback is configured.`,
+    );
+
+    if (fallback === 'dummy') {
+      return;
+    }
+
+    this.emitToConsole(entry, error);
   }
 
   private sendToManagedBackend(entry: JournalEntry, fields: Map<string, string>): boolean {
@@ -260,8 +283,8 @@ export class SystemdJournal {
         throw new Error(`Managed backend HTTP ${response.status}`);
       }
     }).catch((error: unknown) => {
-      if (this.fallbackToConsole) {
-        console.error('Managed log backend error:', error);
+      if (this.backend === 'managed') {
+        this.applyFallback(entry, error);
       }
     });
 
@@ -312,6 +335,9 @@ export class SystemdJournal {
     if (this.backend === 'managed') {
       return Boolean(this.getManagedEndpoint());
     }
+    if (this.backend === 'dummy') {
+      return false;
+    }
     return true;
   }
 
@@ -329,7 +355,7 @@ export class SystemdJournal {
     return this.fieldsCache.delete(name.toUpperCase());
   }
 
-  public getBackend(): Exclude<JournalBackend, 'auto'> {
+  public getBackend(): JournalRuntimeBackend {
     return this.backend;
   }
 }

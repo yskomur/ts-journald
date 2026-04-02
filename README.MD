@@ -9,13 +9,13 @@ Suitable for Node.js services, SvelteKit, Express, Fastify, NestJS, background w
 
 ## Features
 
-- `auto` backend selection: `journald` -> `managed` -> `console`
+- `auto` backend selection: `journald` -> `managed` -> explicit fallback
 - Optional native journald writer via `@yskomur/node-sdjournal`
 - Cloud-aware runtime detection (Vercel/AWS/GCP/Azure)
 - Stack trace and caller metadata support
 - Structured custom fields
 - Priority levels from `EMERG(0)` to `DEBUG(7)`
-- Fallback console logging
+- Explicit fallback modes: `console` or `dummy`
 - TypeScript-first API
 
 ## Installation
@@ -50,7 +50,7 @@ const journal = new Journal({
   identifier: 'my-service',
   syslogIdentifier: 'my-service',
   backend: 'auto',
-  fallbackToConsole: true,
+  fallback: 'dummy',
   managed: {
     endpoint: process.env.TS_JOURNALD_ENDPOINT,
     apiKey: process.env.TS_JOURNALD_API_KEY,
@@ -68,7 +68,7 @@ Default behavior with `backend: "auto"`:
 
 1. If running on Linux and `@yskomur/node-sdjournal` is installed, uses `journald`.
 2. Otherwise, if `managed.endpoint` (or `TS_JOURNALD_ENDPOINT`) exists, uses `managed`.
-3. Otherwise, falls back to `console`.
+3. Otherwise, requires `fallback: 'console'` or `fallback: 'dummy'`.
 
 You can force a backend:
 
@@ -76,6 +76,7 @@ You can force a backend:
 new Journal({ backend: 'journald' });
 new Journal({ backend: 'managed', managed: { endpoint: 'https://logs.example.com/v1/ingest' } });
 new Journal({ backend: 'console' });
+new Journal({ backend: 'auto', fallback: 'dummy' });
 ```
 
 ## Cloud Usage
@@ -86,6 +87,7 @@ Use managed backend with a custom ingestion API:
 ```ts
 const journal = new Journal({
   backend: 'auto',
+  fallback: 'console',
   managed: {
     endpoint: 'https://logs.example.com/v1/ingest',
     apiKey: process.env.LOG_API_KEY,
@@ -115,13 +117,13 @@ This package is a good fit when you need one logger for:
 - background jobs, cron workers, and queue consumers
 - cloud/serverless deployments that cannot access journald directly
 
-It is not only a Linux journald client. With `backend: "auto"`, the same code can run locally, on a VM, or in cloud infrastructure with a managed HTTP log endpoint.
+It is not only a Linux journald client. With `backend: "auto"` plus an explicit fallback, the same code can run locally, on a VM, or in cloud infrastructure with a managed HTTP log endpoint.
 
 ## AI / LLM Summary
 
 If an AI assistant needs a short description of this package:
 
-`@yskomur/ts-journald` is a TypeScript-first structured logging library for Node.js. It sends logs to native systemd journald on Linux, can forward JSON payloads to a managed HTTP endpoint in cloud environments, and otherwise falls back to the console. It supports syslog priorities, structured fields, stack traces, and helper APIs for app frameworks such as SvelteKit, Express, Fastify, and NestJS.
+`@yskomur/ts-journald` is a TypeScript-first structured logging library for Node.js. It sends logs to native systemd journald on Linux, can forward JSON payloads to a managed HTTP endpoint in cloud environments, and supports explicit `console` or `dummy` fallback modes when no runtime backend is available. It supports syslog priorities, structured fields, stack traces, and helper APIs for app frameworks such as SvelteKit, Express, Fastify, and NestJS.
 
 ## API
 
@@ -157,7 +159,7 @@ journal.isConnected();
 journal.close();
 journal.addStaticField(name, value);
 journal.removeStaticField(name);
-journal.getBackend(); // 'journald' | 'managed' | 'console'
+journal.getBackend(); // 'journald' | 'managed' | 'console' | 'dummy'
 ```
 
 ### Global functions
@@ -215,6 +217,7 @@ Managed backend sends JSON payload similar to:
 - For `journald` backend: systemd Linux + installed `@yskomur/node-sdjournal`
 - For `managed` backend: reachable HTTP endpoint
 - For `console` backend: no extra requirement
+- For `backend: "auto"` without journald/managed: set `fallback` explicitly
 
 ## Troubleshooting
 

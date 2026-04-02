@@ -4,6 +4,8 @@ import type {
   JournalOptions,
   JournalEntry,
   JournalBackend,
+  JournalFallback,
+  JournalRuntimeBackend,
   ManagedBackendOptions,
 } from './types';
 
@@ -36,6 +38,8 @@ export type {
   JournalOptions,
   JournalEntry,
   JournalBackend,
+  JournalFallback,
+  JournalRuntimeBackend,
   ManagedBackendOptions,
 };
 
