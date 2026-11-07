@@ -335,10 +335,8 @@ export class SystemdJournal {
     if (this.backend === 'managed') {
       return Boolean(this.getManagedEndpoint());
     }
-    if (this.backend === 'dummy') {
-      return false;
-    }
-    return true;
+    return this.backend !== 'dummy';
+
   }
 
   public close(): void {

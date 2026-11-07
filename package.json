@@ -1,6 +1,6 @@
 {
   "name": "@yskomur/ts-journald",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "TypeScript and Node.js logger for systemd journald with structured logging, syslog priorities, cloud fallback, and support for SvelteKit, Express, Fastify, and NestJS services",
   "main": "dist/index.js",
   "module": "dist/index.esm.js",
@@ -36,9 +36,9 @@
   "homepage": "https://github.com/yskomur/ts-journald#readme",
   "devDependencies": {
     "@rollup/plugin-typescript": "^12.3.0",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.9.3",
     "@typescript/native-preview": "latest",
-    "rollup": "^4.60.1",
+    "rollup": "^4.62.0",
     "tslib": "^2.8.1"
   },
   "files": [
